@@ -16,6 +16,9 @@ int z_PostInc = 0;
 int x_PostDec = 0;
 int y_PostDec = 0;
 int z_PostDec = 0;
+int xRegChange = 0;
+int yRegChange = 0;
+int zRegChange = 0;
 
 typedef struct regist{
 	int status;
@@ -132,7 +135,7 @@ int main() {
 		//puts(r[i].regis);
 	}
 	while(fgets(input, MAX_LENGTH, stdin) != NULL) {
-		x_count = y_count = z_count = 0;
+		//x_count = y_count = z_count = 0;
 		x_PostInc = x_PostInc = y_PostInc = y_PostDec = z_PostInc = z_PostDec =0;
 		// build token list by lexer
 		Token *content = lexer(input);
@@ -169,15 +172,6 @@ int main() {
 		
 	}
 	free(r);
-	/*if(x_count >0 ){
-		printf("store [0] r0\n");
-	}
-	else if(y_count > 0 ){
-		printf("store [4] r1\n");
-	}
-	else if(z_count>0){
-		printf("store [8] r2\n");
-	}*/
 	return 0;
 }
 
@@ -379,35 +373,32 @@ void codegen(AST *ast) {
 		case Variable:
 			switch(ast->val){
 				case 'x':
-					//puts("VAX");
 					strcpy(ast->tmp_reg,"r0");
 					r[0].status=1;
-					if(x_count ==0 && assigned ==0){  //first to use x and not left of Assign
+					if((x_count ==0 && assigned ==0)||xRegChange ==1){  //first to use x and not left of Assign
 						printf("load %s %s\n","r0","[0]");
-						//x_count--;
 						x_count++;
+						xRegChange =0;
 					}
 					
 					break;
 				case 'y':
-					//puts("VAY");
 					strcpy(ast->tmp_reg,"r1");
 					r[1].status=1;
-					if(y_count ==0 && assigned == 0){
+					if((y_count ==0 && assigned == 0) ||yRegChange==1){
 						printf("load %s %s\n","r1","[4]");
-						//y_count--;
 						y_count++;
+						yRegChange =0;
 					}
 					
 					break;
 				case 'z':
-					//puts("VAZ");
 					strcpy(ast->tmp_reg,"r2");
 					r[2].status=1;
-					if(z_count ==0 && assigned ==0){
+					if((z_count ==0 && assigned ==0) || zRegChange ==1){
 						printf("load %s %s\n","r2","[8]");
-						//z_count--;
 						z_count++;
+						zRegChange =0;
 					}
 					
 					break;
@@ -423,7 +414,6 @@ void codegen(AST *ast) {
 		case RPar:
 			break;
 		case PostInc:
-			//puts("POI");
 			postOperatorStatus++; //set for +-*/=
 			codegen(ast->mid);
 			if(ast->mid->val == 'x'){
@@ -440,24 +430,8 @@ void codegen(AST *ast) {
 			}
 			ast->type = Variable;
 			strcpy(ast->tmp_reg,ast->mid->tmp_reg); 
-			/*if(ast == ast_root){
-				printf("add %s %s %d\n",ast->tmp_reg,ast->tmp_reg,1); //only x++
-				//printf("load %s %s\n","r0","[0]");
-				
-				/*if(ast->mid->val='x'){
-					printf("add r0 r0 1","[0]",ast->mid->tmp_reg);
-				}
-				else if(ast->mid->val = 'y'){
-					printf("add r1 r1 1\n","[4]",ast->mid->tmp_reg);
-				}
-				else{
-					printf("add r2 r2 1\n");
-				}
-			}*/
-			//x ast->type = ast->mid->type;
 			break;
 		case PostDec:
-			//puts("POD");
 			postOperatorStatus++;
 			codegen(ast->mid);
 			if(ast->mid->val == 'x'){
@@ -475,20 +449,9 @@ void codegen(AST *ast) {
 			strcpy(ast->tmp_reg,ast->mid->tmp_reg);
 			if(ast == ast_root){
 				printf("add %s %s %d\n",ast->tmp_reg,ast->tmp_reg,1);
-				/*if(ast->mid->val='x'){
-					printf("store %s %s\n","[0]",ast->mid->tmp_reg);
-				}
-				else if(ast->mid->val = 'y'){
-					printf("store %s %s\n","[4]",ast->mid->tmp_reg);
-				}
-				else{
-					printf("store %s %s\n","[8]",ast->mid->tmp_reg);
-				}*/
 			}
-			//ast->type = ast->mid->type;
 			break;
 		case PreInc:
-			//puts("PREI");
 			codegen(ast->mid);
 			strcpy(ast->tmp_reg,ast->mid->tmp_reg);
 			if(ast == ast_root){ //only ++x
@@ -502,12 +465,10 @@ void codegen(AST *ast) {
 					printf("load %s %s\n","r2","[8]");
 				}
 				printf("add %s %s %d\n",ast->tmp_reg,ast->tmp_reg,1);
-				//printf("store %s %s\n","[0]","r0");
 			}
 			else printf("add %s %s %d\n",ast->tmp_reg,ast->tmp_reg,1);
 			break;
 		case PreDec:
-			//puts("PRED");
 			codegen(ast->mid);
 			strcpy(ast->tmp_reg,ast->mid->tmp_reg);
 			if(ast == ast_root){
@@ -521,7 +482,6 @@ void codegen(AST *ast) {
 					printf("load %s %s\n","r2","[8]");
 				}
 				printf("sub %s %s %d\n",ast->tmp_reg,ast->tmp_reg,1);
-				//printf("store %s %s\n","[0]","r0");
 			}
 			else printf("sub %s %s %d\n",ast->tmp_reg,ast->tmp_reg,1);
 			break;
@@ -529,7 +489,6 @@ void codegen(AST *ast) {
 			codegen(ast->mid);
 			ast->type = ast->mid->type;
 			if(!strcmp(ast->mid->tmp_reg, "r0") || !strcmp(ast->mid->tmp_reg,"r1") || !strcmp(ast->mid->tmp_reg,"r2")){
-				//find_reg(&ast);
 				strcpy(ast->tmp_reg,ast->mid->tmp_reg);
 			}
 			else{
@@ -555,58 +514,30 @@ void codegen(AST *ast) {
 					printf("sub %s %d %s\n",ast->tmp_reg,0,ast->mid->tmp_reg); //-x
 				}
 			}
-			
-			
-			
-			
-			//strcpy(ast->tmp_reg,ast->mid->tmp_reg);
 			break;
 		case Mul:
 			codegen(ast->lhs);
 			codegen(ast->rhs);
 			if(ast->lhs->type == Value && ast->rhs->type == Value){ //兩邊都是常數
-				//puts("MUVLVL");
 				ast->val = ast->lhs->val * ast->rhs->val;
 				ast->type = Value;
 			}
 			else if(ast->lhs->type == Variable && ast->rhs->type == Variable){ //all variable
-				//puts("NUVAVA");
 				find_reg(&ast);
 				printf("mul %s %s %s\n",ast->tmp_reg,ast->lhs->tmp_reg,ast->rhs->tmp_reg);
 				ast->type = Variable;
 			}
 			else if(ast->lhs->type == Value && ast->rhs->type == Variable){  //l is Value and R is Variable
-				//puts("MUVLVA");
 				find_reg(&ast);
 				printf("mul %s %s %d\n",ast->tmp_reg,ast->rhs->tmp_reg,ast->lhs->val);
 				ast->type = Variable;
 			}
 			else if(ast->rhs->type == Value && ast->lhs->type == Variable){ //R is Value and l is Variable
-				//puts("MUVAVL");
 				find_reg
 				(&ast);
 				printf("mul %s %s %d\n",ast->tmp_reg,ast->lhs->tmp_reg,ast->rhs->val);
 				ast->type = Variable;
 			}
-			/*while(postOperatorStatus){ //後序要加1
-				postOperatorStatus--;
-				if(getOpLevel(ast->lhs->type)==1){
-					if(ast->lhs->type == PostInc){
-						printf("add %s %s %d\n",ast->lhs->mid->tmp_reg,ast->lhs->mid->tmp_reg,1);
-					}
-					else{
-						printf("sub %s %s %d\n",ast->lhs->mid->tmp_reg,ast->lhs->mid->tmp_reg,1);
-					}
-				}
-				if(getOpLevel(ast->rhs->type) ==1){
-					if(ast->lhs->type == PostInc){
-						printf("add %s %s %d\n",ast->rhs->mid->tmp_reg,ast->rhs->mid->tmp_reg,1);
-					}
-					else{
-						printf("sub %s %s %d\n",ast->rhs->mid->tmp_reg,ast->rhs->mid->tmp_reg,1);
-					}
-				}
-			}*/
 			break;
 		case Div:
 			codegen(ast->lhs);
@@ -614,7 +545,6 @@ void codegen(AST *ast) {
 			if(ast->lhs->type == Value && ast->rhs->type == Value){ //都常數
 				ast->val = ast->lhs->val / ast->rhs->val;
 				ast->type = Value;
-				//printf("%d ",ast->val);
 			}
 			else if(ast->lhs->type == Variable && ast->rhs->type == Variable){ //all variable
 				find_reg(&ast);
@@ -725,27 +655,21 @@ void codegen(AST *ast) {
 			codegen(ast->lhs);
 			codegen(ast->rhs);
 			if(ast->lhs->type == Value && ast->rhs->type == Value){  //都常數
-				//puts("ADVLVL");
 				ast->val = ast->lhs->val + ast->rhs->val;
 				ast->type = Value;
 			}
 			else if(ast->lhs->type == Variable && ast->rhs->type == Variable){ //all
-				//puts("ADVAVA");
-
 				find_reg(&ast);
 				printf("add %s %s %s\n",ast->tmp_reg,ast->lhs->tmp_reg,ast->rhs->tmp_reg); 
 				ast->type = Variable;
 			}
 			else if(ast->lhs->type == Value && ast->rhs->type == Variable){ //L VAR R VAL
-				//puts("ADVLVA");
 
 				find_reg(&ast);
 				printf("add %s %d %s\n",ast->tmp_reg,ast->lhs->val,ast->rhs->tmp_reg);
 				ast->type = Variable;
 			}
 			else if(ast->rhs->type == Value && ast->lhs->type == Variable){//L VAL R VAR
-				//puts("ADVLVA");
-
 				find_reg(&ast);
 				printf("add %s %s %d\n",ast->tmp_reg,ast->lhs->tmp_reg,ast->rhs->val);
 				ast->type = Variable;
@@ -823,66 +747,32 @@ void codegen(AST *ast) {
 			codegen(ast->lhs);
 			assigned--;
 			codegen(ast->rhs);
-			//printf("%d",ast->rhs->type);
-			//if(ast == ast_root){
 			if(ast->lhs->type == Variable){
 				if((ast->lhs)->val == 'x'){
 					strcpy(type,"[0]");
+					xRegChange = 1;
 				}
 				else if((ast->lhs)->val == 'y'){
 					strcpy(type,"[4]");
+					yRegChange = 1;
 				}
 				else if((ast->lhs)->val == 'z'){
 					strcpy(type,"[8]");
+					zRegChange = 1;
 				}
 			}
 			if(ast->rhs->type == Value){
-				//puts("EWQ0");
-				//find_reg(&ast->rhs);
 				find_reg(&ast->rhs);
-				printf("sub %s %s %s\n",ast->rhs->tmp_reg,ast->rhs->tmp_reg,ast->rhs->tmp_reg);
-				printf("add %s %s %d\n",ast->rhs->tmp_reg,ast->rhs->tmp_reg,ast->rhs->val);
+				printf("add %s %d %d\n",ast->rhs->tmp_reg,0,ast->rhs->val);
 				printf("store %s %s\n",type,ast->rhs->tmp_reg);
 			}
 			else if(ast->rhs->type == Variable){
-				//puts("KKKK");
 				printf("store %s %s\n",type,ast->rhs->tmp_reg);
 			}
 			else if(ast->rhs->type == PostDec || ast->rhs->type == PostInc){
 				printf("store %s %s\n",type,ast->rhs->mid->tmp_reg);
 			}
-			//r[0].status = r[1].status = r[2].status = 0;
-			//}
-			/*else{
-				if(ast->lhs->type == Variable && ast->rhs->type == Variable){
-					strcpy(ast->tmp_reg,ast->lhs->tmp_reg);
-					printf("store %s %s\n",ast->lhs->tmp_reg,ast->rhs->tmp_reg);
-				}
-				else if(ast->lhs->type == Variable && ast->rhs->type == Value){
-					//puts("ASRVL");
-					strcpy(ast->tmp_reg,ast->lhs->tmp_reg);
-					printf("store %s %d\n",ast->lhs->tmp_reg,ast->rhs->val);
-				}
-
-			}*/
-			/*if(ast == ast_root){
-				while(postOperatorStatus){
-				puts("FFF");
-				postOperatorStatus--;
-				if(ast->rhs->type == PostInc){
-					printf("add %s %s %d\n",ast->rhs->tmp_reg,ast->rhs->tmp_reg,1);
-				}
-				else if(ast->rhs->type == PostDec){
-					printf("sub %s %s %d\n",ast->rhs->tmp_reg,ast->rhs->tmp_reg,1);
-				}
-			}
-			ast->type = ast->rhs->type;
-			if(ast->rhs->type == PostInc || ast->rhs->type == PostDec){
-				if(ast->rhs->type == PostInc || ast->rhs->type == PostDec) ast->type = Variable;
-				else ast->type = ast->lhs->type;
-			}
 			
-			}*/
 			ast->type = Variable;
 			strcpy(ast->tmp_reg,ast->rhs->tmp_reg);
 			break;
@@ -906,7 +796,6 @@ Token *new_token(int kind, int param) {
 	char tmp[10];
 	if(param>='x' && param <='z'){
 		sprintf(tmp,"%c",param);
-		//puts(tmp);
 		strcpy(res->tmp_reg,tmp);
 	}
 	
